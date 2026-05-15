@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.platform.magnesium_alloy_platform.mapper.CrackMapper">
+    <insert id="insertCrack">
+        INSERT INTO crack (CrackStart, CrackLength, CrackWidth, CrackHeight, CrackArea, CrackPerimeter, ImageUrl)
+        VALUES (#{crackMap.crackStart}, #{crackMap.crackLength}, #{crackMap.crackWidth}, #{crackMap.crackHeight}, #{crackMap.crackArea}, #{crackMap.crackPerimeter}, #{crackMap.imageUrl})
+    </insert>
+    <delete id="deleteCracksByImageUrls">
+        DELETE FROM crack
+        WHERE ImageUrl IN
+        <foreach item="item" index="index" collection="imageUrls" open="(" separator="," close=")">
+            #{item}
+        </foreach>
+    </delete>
+    <select id="queryCracksByImageUrl" resultType="java.util.Map">
+        SELECT CrackStart, CrackLength, CrackWidth, CrackHeight, CrackArea, CrackPerimeter
+        FROM crack
+        WHERE ImageUrl = #{imageUrl}
+    </select>
+</mapper>

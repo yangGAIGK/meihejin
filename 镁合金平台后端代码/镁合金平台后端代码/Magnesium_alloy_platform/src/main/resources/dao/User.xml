@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.platform.magnesium_alloy_platform.mapper.UserMapper">
+    <update id="updateUserInfo">
+        UPDATE user
+        <set>
+            <if test="username != null">
+                username = #{username},
+            </if>
+            <if test="userUrl != null">
+                UserUrl = #{userUrl}
+            </if>
+        </set>
+        WHERE uid = #{uid}
+    </update>
+    <update id="forgetPassword">
+        UPDATE user
+        SET password = #{newPwd}
+        WHERE username = #{username} AND email = #{email}
+    </update>
+    <update id="updatePassword">
+        UPDATE user
+        SET password = #{encryptedNewPwd}
+        WHERE username = #{username} AND password = #{encryptedOldPwd}
+    </update>
+    <select id="getUserInfo" resultType="java.util.Map">
+        SELECT username, email, UserUrl
+        FROM user
+        WHERE uid = #{uid}
+    </select>
+</mapper>

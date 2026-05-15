@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git add *)",
+      "Bash(git rm *)",
+      "Bash(rm -rf \"./镁合金平台前端代码/镁合金平台前端代码/镁合金力学性能预测平台5.6/镁合金力学性能预测平台5.6/.git\")",
+      "Bash(rm -rf \"./镁合金平台后端代码/镁合金平台后端代码/Magnesium_alloy_platform/.git\")",
+      "Bash(git commit *)",
+      "Bash(git branch *)",
+      "Bash(git push *)",
+      "Bash(git reset *)"
+    ]
+  }
+}

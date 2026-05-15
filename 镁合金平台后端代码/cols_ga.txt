@@ -1,0 +1,8 @@
+﻿Field	Type	Null	Key	Default	Extra
+id	int	NO	PRI	NULL	auto_increment
+user_id	int	NO	MUL	NULL	
+population_size	int	NO		NULL	
+max_generations	int	NO		NULL	
+mutation_rate	decimal(10,6)	NO		NULL	
+crossover_rate	decimal(10,6)	NO		NULL	
+create_time	datetime	NO		CURRENT_TIMESTAMP	DEFAULT_GENERATED
