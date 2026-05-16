@@ -1,7 +1,7 @@
 <template>
   <div class="main">
     <div id="particles-js"></div>
-    <div class="title">镁合金缺陷检测与性能预测系统</div>
+    <div class="title">镁合金性能-裂纹-温度预测识别集成系统</div>
     <el-button class="btn" @click="Login">欢迎使用</el-button>
   </div>
 </template>
@@ -115,7 +115,6 @@ export default {
   0% {
     filter: brightness(1);
   }
-
   100% {
     filter: brightness(1.3);
   }
@@ -126,7 +125,6 @@ export default {
   from {
     opacity: 0;
   }
-
   to {
     opacity: 1;
   }
@@ -135,14 +133,16 @@ export default {
 /* 顶部标题样式 */
 .title {
   position: absolute;
-  top: 20%;
-  font-size: 60px;
+  top: 28%; /* 往上挪一点 */
+  font-size: 68px;
   font-weight: bold;
   color: #00ffff;
   text-shadow: 2px 2px 8px rgba(0, 255, 255, 0.8);
   z-index: 1;
   animation: titleFadeIn 2s ease-in-out, titlePulse 2s infinite alternate;
   text-align: center;
+  width: 90%;
+  line-height: 1.3;
 }
 
 /* 标题渐入动画 */
@@ -151,7 +151,6 @@ export default {
     opacity: 0;
     transform: translateY(-20px);
   }
-
   to {
     opacity: 1;
     transform: translateY(0);
@@ -163,15 +162,14 @@ export default {
   0% {
     transform: scale(1);
   }
-
   100% {
-    transform: scale(1.1);
+    transform: scale(1.05);
   }
 }
 
 .btn {
   position: absolute;
-  top: 60%;
+  top: 48%; /* 关键：往上挪，离标题更近 */
   transform: translateY(-50%);
   width: 300px;
   height: 80px;
@@ -189,9 +187,8 @@ export default {
 .btn:hover {
   background-color: rgba(0, 255, 255, 0.2);
   color: #fff;
-  box-shadow: 0 4px 10px rgba(0, 255, 255, 0.5);
+  box-shadow: 0 4px 10px rgba(0, 255, 0.5);
   cursor: pointer;
-  /* 停止缩放动画 */
 }
 
 /* 按钮缩放动画 */
@@ -199,7 +196,6 @@ export default {
   0% {
     transform: scale(1);
   }
-
   100% {
     transform: scale(1.1);
   }
