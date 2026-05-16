@@ -68,6 +68,18 @@
           ref="passwordForm"
           label-width="80px"
       >
+        <el-form-item label="绑定邮箱" prop="email">
+          <el-input
+              v-model="passwordForm.email"
+              placeholder="请输入绑定的邮箱"
+          ></el-input>
+        </el-form-item>
+        <el-form-item label="绑定手机" prop="phone">
+          <el-input
+              v-model="passwordForm.phone"
+              placeholder="请输入绑定的手机号"
+          ></el-input>
+        </el-form-item>
         <el-form-item label="旧密码" prop="old_pwd">
           <el-input
               v-model="passwordForm.old_pwd"
@@ -114,11 +126,15 @@ export default {
     return {
       profile: {
         username: "",
+        email: "",
+        phone: "",
         UserUrl: null, // 使用 UserUrl 而不是 avatar
       },
       loading: false,
       passwordDialogVisible: false,
       passwordForm: {
+        email: "",
+        phone: "",
         old_pwd: "",
         new_pwd: "",
         re_pwd: "",
@@ -129,6 +145,14 @@ export default {
         ],
       },
       passwordRules: {
+        email: [
+          { required: true, message: "请输入绑定的邮箱", trigger: "blur" },
+          { type: "email", message: "请输入正确的邮箱格式", trigger: "blur" },
+        ],
+        phone: [
+          { required: true, message: "请输入绑定的手机号", trigger: "blur" },
+          { pattern: /^1[3-9]\d{9}$/, message: "手机号格式不正确", trigger: "blur" },
+        ],
         old_pwd: [
           { required: true, message: "请输入旧密码", trigger: "blur" },
         ],
@@ -218,10 +242,12 @@ export default {
           this.updateAvatar(fullAvatarUrl);
 
           this.profile.username = response.data.username;
+          this.profile.email = response.data.email || "";
+          this.profile.phone = response.data.phone || "";
           // 补存 uid 和 role，确保管理员功能和登录态检测正常
           if (response.data.uid) localStorage.setItem('uid', response.data.uid);
           if (response.data.role !== undefined) localStorage.setItem('role', response.data.role);
-          this.$message.success("用户信息获取成功");
+          this.$message.success("更新成功");
         } else {
           throw new Error("获取用户信息失败");
         }
@@ -335,7 +361,7 @@ export default {
               }
           );
 
-          this.$message.success("修改成功");
+          this.$message.success("更新成功");
           // 如果需要，可以在这里刷新用户信息
         } else {
           this.$message.error("表单验证失败");
@@ -377,6 +403,18 @@ export default {
             new_pwd: this.passwordForm.new_pwd,
           };
 
+          // 验证绑定的邮箱和手机号
+          if (this.passwordForm.email !== this.profile.email || this.passwordForm.phone !== this.profile.phone) {
+            this.$message.error("邮箱或手机号验证不通过，请核对后重试");
+            return;
+          }
+
+          // 检查新密码是否与旧密码相同
+          if (this.passwordForm.new_pwd === this.passwordForm.old_pwd) {
+            this.$message.error("密码不能和旧密码相同，请重新输入");
+            return;
+          }
+
           const response = await axios.put(
               "http://localhost:8080/user/updatePwd",
               updateData,
@@ -384,10 +422,12 @@ export default {
           );
 
           if (response.data.code === 1) {
-            this.$message.success("密码修改成功");
+            this.$message.success("更新成功");
             this.passwordDialogVisible = false;
             // 清空表单
             this.passwordForm = {
+              email: "",
+              phone: "",
               old_pwd: "",
               new_pwd: "",
               re_pwd: "",
