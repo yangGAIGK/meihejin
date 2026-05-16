@@ -2,14 +2,20 @@
 CREATE DATABASE IF NOT EXISTS `model_db` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE `model_db`;
 
--- 1. 用户表
+-- 1. 用户表（已补全后端需要的所有字段）
 CREATE TABLE IF NOT EXISTS `user` (
     `id` INT AUTO_INCREMENT PRIMARY KEY,
     `username` VARCHAR(255) NOT NULL,
     `password` VARCHAR(255) NOT NULL,
     `uid` VARCHAR(64) UNIQUE NOT NULL,
     `email` VARCHAR(255),
-    `UserUrl` VARCHAR(255)
+    `UserUrl` VARCHAR(255),
+    `phone` VARCHAR(20) NOT NULL UNIQUE,
+    `loginFailCount` INT DEFAULT 0,
+    `lockUntil` DATETIME DEFAULT NULL,
+    `role` INT DEFAULT 0,
+    `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    `update_time` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- 2. BP参数表
