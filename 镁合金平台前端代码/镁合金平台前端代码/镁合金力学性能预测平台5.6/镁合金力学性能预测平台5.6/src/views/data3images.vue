@@ -1,35 +1,66 @@
-<template>
-  <div class="crack-visualization-container">
-    <!-- 主内容区 -->
-    <div class="main-content">
-      <!-- 右侧：统计图表 -->
-      <div class="right-panel">
-        <div class="chart-container">
-          <h3 class="section-title">裂纹统计概览 (共 {{ crackCount }} 条裂纹)</h3>
-          <div class="chart-wrapper" ref="overviewChart"></div>
-        </div>
-        <div class="chart-container">
-          <h3 class="section-title">裂纹尺寸分布</h3>
-          <div class="chart-wrapper" ref="sizeChart"></div>
-        </div>
-        <div class="chart-container">
-          <h3 class="section-title">裂纹位置分布</h3>
-          <div class="chart-wrapper" ref="positionChart"></div>
-        </div>
-        <div class="chart-container">
-          <h3 class="section-title">裂纹详细信息</h3>
-          <el-table :data="crackRecords" style="width: 100%" height="300">
-            <el-table-column prop="CrackStart" label="起始位置" width="120"/>
-            <el-table-column prop="CrackLength" label="长度(mm)" width="100"/>
-            <el-table-column prop="CrackWidth" label="宽度(mm)" width="100"/>
-            <el-table-column prop="CrackHeight" label="高度(mm)" width="100"/>
-            <el-table-column prop="CrackArea" label="面积(mm²)" width="100"/>
-            <el-table-column prop="CrackPerimeter" label="周长(mm)" width="100"/>
-          </el-table>
-        </div>
+    <!-- 顶部数据概览卡片 -->
+    <div class="stat-cards">
+      <div class="stat-card">
+        <div class="card-label">裂纹总数</div>
+        <div class="card-value">{{ crackCount }} <span class="unit">条</span></div>
+        <i class="el-icon-warning-outline card-icon"></i>
+      </div>
+      <div class="stat-card">
+        <div class="card-label">平均长度</div>
+        <div class="card-value">{{ avgLength }} <span class="unit">mm</span></div>
+        <i class="el-icon-guide card-icon"></i>
+      </div>
+      <div class="stat-card">
+        <div class="card-label">平均宽度</div>
+        <div class="card-value">{{ avgWidth }} <span class="unit">mm</span></div>
+        <i class="el-icon-rank card-icon"></i>
+      </div>
+      <div class="stat-card">
+        <div class="card-label">最大面积</div>
+        <div class="card-value">{{ maxArea }} <span class="unit">mm²</span></div>
+        <i class="el-icon-full-screen card-icon"></i>
       </div>
     </div>
-  </div>
+
+    <!-- 主内容区：仪表盘布局 -->
+    <div class="dashboard-grid">
+      <!-- 第一排：大型概览图 + 数据列表 -->
+      <div class="grid-item span-2 chart-card">
+        <h3 class="section-title">
+          <i class="el-icon-pie-chart"></i> 裂纹统计概览
+        </h3>
+        <div class="chart-wrapper large" ref="overviewChart"></div>
+      </div>
+
+      <div class="grid-item table-card">
+        <h3 class="section-title">
+          <i class="el-icon-tickets"></i> 裂纹详细数据
+        </h3>
+        <el-table :data="crackRecords" class="custom-table" height="350">
+          <el-table-column prop="CrackLength" label="长度" width="70" align="center"/>
+          <el-table-column prop="CrackWidth" label="宽度" width="70" align="center"/>
+          <el-table-column prop="CrackArea" label="面积" min-width="80" align="center"/>
+          <el-table-column label="位置" min-width="100" show-overflow-tooltip>
+            <template slot-scope="scope">{{ scope.row.CrackStart }}</template>
+          </el-table-column>
+        </el-table>
+      </div>
+
+      <!-- 第二排：分布对比图 -->
+      <div class="grid-item chart-card">
+        <h3 class="section-title">
+          <i class="el-icon-sort"></i> 裂纹尺寸分布对比
+        </h3>
+        <div class="chart-wrapper" ref="sizeChart"></div>
+      </div>
+
+      <div class="grid-item span-2 chart-card">
+        <h3 class="section-title">
+          <i class="el-icon-location-outline"></i> 裂纹空间位置分布
+        </h3>
+        <div class="chart-wrapper" ref="positionChart"></div>
+      </div>
+    </div>
 </template>
 
 <script>
@@ -41,10 +72,11 @@ export default {
   data() {
     return {
       imageRecords: [],
-      imageTotal: 5, // 直接赋值，因为 total 只有 5 个
+      imageTotal: 0,
       imageCurrentPage: 1,
-      imagePageSize: 10,
+      imagePageSize: 100, // 一次加载更多
       crackRecords: [],
+      loading: false,
 
       overviewChart: null,
       sizeChart: null,
@@ -55,6 +87,18 @@ export default {
     crackCount() {
       return this.crackRecords.length;
     },
+    avgLength() {
+      if (!this.crackCount) return 0;
+      return (this.crackRecords.reduce((acc, c) => acc + (c.CrackLength || 0), 0) / this.crackCount).toFixed(2);
+    },
+    avgWidth() {
+      if (!this.crackCount) return 0;
+      return (this.crackRecords.reduce((acc, c) => acc + (c.CrackWidth || 0), 0) / this.crackCount).toFixed(2);
+    },
+    maxArea() {
+      if (!this.crackCount) return 0;
+      return Math.max(...this.crackRecords.map(c => c.CrackArea || 0)).toFixed(2);
+    }
   },
   created() {
     // 页面加载时自动获取所有裂纹信息
@@ -64,49 +108,73 @@ export default {
     // 获取所有图像表记录
     async fetchImageRecords() {
       try {
+        const token = localStorage.getItem('Authorization');
         const response = await axios.post('http://localhost:8080/imageQuery', {
           page: this.imageCurrentPage,
           pageSize: this.imagePageSize,
+        }, {
+          headers: token ? { 'Authorization': `Bearer ${token}` } : {}
         });
 
-        if (response.data.code === 1) {
-          this.imageRecords = response.data.data.rows;
+        if (response.data.code === 1 && response.data.data) {
+          this.imageRecords = response.data.data.rows || [];
+          this.imageTotal = response.data.data.total || 0;
+          return true;
         } else {
-          this.$message.error(response.data.msg || '获取图像记录失败');
+          console.warn('图像记录返回失败:', response.data.msg);
+          return false;
         }
       } catch (error) {
         console.error('获取图像记录失败:', error);
-        this.$message.error('获取图像记录失败，请稍后重试');
+        return false;
       }
     },
     // 循环获取所有裂纹数据
     async fetchAllCrackData() {
+      this.loading = true;
       try {
         // 先获取所有的imageRecords
-        await this.fetchImageRecords()
+        const ok = await this.fetchImageRecords();
+        if (!ok || this.imageRecords.length === 0) {
+          this.$message.info('暂无裂纹图像数据，请先上传图像进行裂纹识别');
+          this.loading = false;
+          return;
+        }
+
+        const token = localStorage.getItem('Authorization');
         // 循环调用crackQuery，获取所有裂纹信息
         let allCracks = [];
         for (const imageRecord of this.imageRecords) {
           try {
+            const imageUrl = imageRecord.ImageUrl || imageRecord.imageUrl;
+            if (!imageUrl) continue;
             const response = await axios.post('http://localhost:8080/crackQuery', {
-              ImageUrl: imageRecord.ImageUrl,
+              ImageUrl: imageUrl,
+            }, {
+              headers: token ? { 'Authorization': `Bearer ${token}` } : {}
             });
 
-            if (response.data.code === 1) {
+            if (response.data.code === 1 && response.data.data && response.data.data.rows) {
               allCracks = allCracks.concat(response.data.data.rows);
             } else {
-              console.warn(`获取 ${imageRecord.ImageUrl} 的裂纹信息失败: ${response.data.msg}`);
+              console.warn(`获取 ${imageUrl} 的裂纹信息失败: ${response.data.msg}`);
             }
           } catch (error) {
-            console.error(`获取 ${imageRecord.ImageUrl} 的裂纹信息失败:`, error);
+            console.error(`单张裂纹查询失败，跳过:`, error);
           }
         }
 
-        this.crackRecords = allCracks; // 更新裂纹信息
-        this.initCharts(); // 初始化图表
+        this.crackRecords = allCracks;
+        if (allCracks.length === 0) {
+          this.$message.info('当前图像暂无裂纹识别结果');
+        } else {
+          this.initCharts();
+        }
       } catch (error) {
-        console.error('获取所有裂纹信息失败:', error);
-        this.$message.error('获取所有裂纹信息失败，请稍后重试');
+        console.error('获取裂纹数据异常:', error);
+        this.$message.error('请求异常，请检查后端连接');
+      } finally {
+        this.loading = false;
       }
     },
     // 初始化所有图表
@@ -141,6 +209,8 @@ export default {
         wide: this.crackRecords.filter(d => d.CrackWidth >= 1.0).length,
       };
 
+      const chartColor = ['#00d4ff', '#7c3aed', '#f43f5e', '#fbbf24'];
+
       const option = {
         tooltip: {
           trigger: 'item',
@@ -148,10 +218,8 @@ export default {
         legend: {
           bottom: '5%',
           left: 'center',
-          textStyle: {    // 调整图例文字大小
-            fontSize: 12
-          },
-          itemGap: 10  // 调整图例间距
+          textStyle: { color: '#8b949e', fontSize: 12 },
+          itemGap: 20
         },
         grid: [
           { right: '70%', left: '10%', top: '15%', bottom: '60%' }, // 进一步调整right值
@@ -162,6 +230,7 @@ export default {
             gridIndex: 1,
             type: 'category',
             data: ['小型(<10mm)', '中型(10-30mm)', '大型(≥30mm)'],
+            axisLabel: { color: '#8b949e' }
           },
         ],
         yAxis: [
@@ -169,6 +238,9 @@ export default {
             gridIndex: 1,
             type: 'value',
             name: '数量',
+            nameTextStyle: { color: '#8b949e' },
+            axisLabel: { color: '#8b949e' },
+            splitLine: { lineStyle: { color: 'rgba(255,255,255,0.05)' } }
           },
         ],
         series: [
@@ -202,13 +274,15 @@ export default {
               { value: widthCategories.wide, name: '宽(≥1.0mm)' },
             ],
             itemStyle: {
-              color: function (params) {
-                const colorList = ['#c23531', '#2f4554', '#61a0a8'];
-                return colorList[params.dataIndex];
-              },
+              borderRadius: [4, 4, 0, 0],
+              color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                { offset: 0, color: '#00d4ff' },
+                { offset: 1, color: '#7c3aed' }
+              ])
             },
           },
         ],
+        backgroundColor: 'transparent'
       };
 
       this.overviewChart.setOption(option);
@@ -352,66 +426,126 @@ export default {
 };
 </script>
 
-<style lang="less" scoped>
-.crack-visualization-container {
+<.crack-visualization-container {
   min-height: 100%;
-  padding: 20px;
+  padding: 24px;
   background-color: var(--bg-base);
-}
-
-.main-content {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 24px;
 }
 
-.right-panel {
+/* 统计卡片 */
+.stat-cards {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
 }
 
-.chart-container {
+.stat-card {
   background: var(--bg-elevated);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
+  padding: 20px;
+  position: relative;
+  overflow: hidden;
   box-shadow: var(--shadow-card);
-  padding: 16px;
-  height: 400px;
+  transition: transform 0.3s ease;
+
+  &:hover { transform: translateY(-4px); }
+
+  .card-label {
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+  }
+
+  .card-value {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--text-primary);
+    
+    .unit {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-left: 4px;
+    }
+  }
+
+  .card-icon {
+    position: absolute;
+    right: -10px;
+    bottom: -10px;
+    font-size: 60px;
+    color: var(--accent-primary);
+    opacity: 0.05;
+  }
+}
+
+/* 仪表盘网格 */
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-auto-rows: minmax(400px, auto);
+  gap: 20px;
+}
+
+.grid-item {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  box-shadow: var(--shadow-card);
+  display: flex;
+  flex-direction: column;
+}
+
+.span-2 { grid-column: span 2; }
+
+.section-title {
+  margin: 0 0 20px 0;
+  color: var(--text-primary);
+  font-size: 16px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  i { color: var(--accent-primary); }
 }
 
 .chart-wrapper {
-  height: 300px;
+  flex: 1;
   width: 100%;
+  min-height: 300px;
+  
+  &.large { height: 350px; }
 }
 
-.section-title {
-  margin: 0 0 12px 0;
-  color: var(--accent-primary);
-  font-size: 13px;
-  font-weight: 600;
-  letter-spacing: 0.5px;
-  text-transform: uppercase;
-  padding-bottom: 10px;
-  border-bottom: 1px solid var(--border-subtle);
+.custom-table {
+  background: transparent !important;
+  /deep/ .el-table__body tr:hover > td.el-table__cell {
+    background: rgba(0,212,255,0.06) !important;
+  }
 }
 
-/* 表格覆盖 */
-/deep/ .el-table th.el-table__cell {
-  background-color: var(--bg-overlay) !important;
-  color: var(--accent-primary) !important;
-  border-bottom: 1px solid var(--border-subtle) !important;
-}
-
-/deep/ .el-table tr,
-/deep/ .el-table td.el-table__cell {
-  background-color: var(--bg-elevated) !important;
-  color: var(--text-primary) !important;
-  border-bottom: 1px solid rgba(255,255,255,0.04) !important;
-}
-
-/deep/ .el-table__body tr:hover > td.el-table__cell {
-  background-color: rgba(0,212,255,0.07) !important;
+/* 表格样式适配 */
+/deep/ .el-table {
+  background: transparent !important;
+  color: var(--text-secondary) !important;
+  
+  &::before { display: none; }
+  
+  th.el-table__cell {
+    background: rgba(0,212,255,0.05) !important;
+    color: var(--accent-primary) !important;
+    border-bottom: 1px solid rgba(0,212,255,0.1) !important;
+  }
+  
+  td.el-table__cell {
+    background: transparent !important;
+    border-bottom: 1px solid rgba(255,255,255,0.03) !important;
+  }
 }
 </style>
 
