@@ -8,7 +8,6 @@
       text-color="var(--text-secondary)"
       active-text-color="var(--accent-primary)"
     >
-      <!-- 1. 性能预测 -->
       <el-submenu index="1">
         <template #title>
           <i class="el-icon-s-data"></i>
@@ -25,7 +24,6 @@
         </el-menu-item>
       </el-submenu>
 
-      <!-- 2. 裂纹识别 -->
       <el-submenu index="2">
         <template #title>
           <i class="el-icon-camera"></i>
@@ -42,7 +40,6 @@
         </el-menu-item>
       </el-submenu>
 
-      <!-- 3. 温度预测 -->
       <el-submenu index="3">
         <template #title>
           <i class="el-icon-picture"></i>
@@ -56,13 +53,11 @@
         </el-menu-item>
       </el-submenu>
 
-      <!-- 4. 历史中心 (独立顶级入口) -->
       <el-menu-item index="5" @click="goHistory">
         <i class="el-icon-time"></i>
         <span>历史中心</span>
       </el-menu-item>
 
-      <!-- 5. 个人信息 / 管理中心 -->
       <el-menu-item index="4" @click="goProfile">
         <i class="el-icon-user"></i>
         <span>{{ isAdmin ? '管理中心' : '个人信息' }}</span>
@@ -113,7 +108,8 @@ export default {
   /deep/ .el-submenu__title {
     height: 48px !important;
     line-height: 48px !important;
-    font-size: 13px !important;
+    /* 菜单文字从13px改为15px */
+    font-size: 15px !important;
     font-weight: 500 !important;
     color: var(--text-secondary) !important;
     border-bottom: 2px solid transparent !important;
@@ -122,7 +118,7 @@ export default {
     background: transparent !important;
 
     i {
-      font-size: 14px !important;
+      font-size: 16px !important; /* 图标也稍微调大一点 */
       margin-right: 6px !important;
       color: inherit !important;
     }
