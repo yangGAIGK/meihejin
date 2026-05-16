@@ -5,7 +5,8 @@
       <div class="header-left">
         <div class="logo-icon">⬡</div>
         <div class="header-title">
-          <span class="title-main">镁合金智能分析平台</span>
+          <!-- 修改这里：改成你要的系统全称 -->
+          <span class="title-main">镁合金性能-裂纹-温度预测识别集成系统</span>
           <span class="title-sub">MAGNESIUM ALLOY ANALYSIS PLATFORM</span>
         </div>
       </div>
@@ -49,7 +50,7 @@ export default {
     };
   },
   computed: {
-    ...mapState('user', ['avatar']), // 从Vuex获取头像
+    ...mapState('user', ['avatar']),
     displayedAvatar() {
       return this.avatar || this.defaultAvatar;
     }
@@ -62,14 +63,12 @@ export default {
     ...mapActions('user', ['updateAvatar', 'clearUserData']),
 
     setupInterceptors() {
-      // 请求拦截器
       axios.interceptors.request.use(config => {
         const token = localStorage.getItem('Authorization');
         if (token) config.headers['Authorization'] = token;
         return config;
       });
 
-      // 响应拦截器
       axios.interceptors.response.use(
           response => response,
           error => {
@@ -91,14 +90,12 @@ export default {
         if (response.data?.username) {
           let avatarUrl = response.data.avatar || this.defaultAvatar;
           if (avatarUrl && !avatarUrl.startsWith("http")) {
-            // 处理后端返回的URL格式，确保是完整URL
             if (avatarUrl.startsWith("//")) {
               avatarUrl = "http:" + avatarUrl;
             } else if (!avatarUrl.includes("://")) {
               avatarUrl = "http://localhost:8080" + avatarUrl;
             }
           }
-          // 添加时间戳防止缓存
           const fullAvatarUrl = avatarUrl + "?t=" + new Date().getTime();
           this.updateAvatar(fullAvatarUrl);
         } else {
@@ -149,14 +146,12 @@ export default {
         if (response.data?.code === 1) {
           let avatarUrl = response.data.data;
           if (!avatarUrl.startsWith('http')) {
-            // 处理OSS返回的URL格式，确保是完整URL
             if (avatarUrl.startsWith('//')) {
               avatarUrl = "http:" + avatarUrl;
             } else if (!avatarUrl.includes("://")) {
               avatarUrl = "http://localhost:8080" + avatarUrl;
             }
           }
-          // 添加时间戳防止缓存
           const fullAvatarUrl = avatarUrl + "?t=" + new Date().getTime();
           this.updateAvatar(fullAvatarUrl);
           this.$message.success("头像上传成功");
@@ -195,7 +190,7 @@ export default {
           const token = this.getAuthorization();
           const updateData = {
             username: this.profile.username,
-            UserUrl: this.profile.UserUrl.split('?')[0], // 移除时间戳
+            UserUrl: this.profile.UserUrl.split('?')[0],
           };
 
           await axios.put(
@@ -209,7 +204,6 @@ export default {
           );
 
           this.$message.success("修改成功");
-          // 如果需要，可以在这里刷新用户信息
         } else {
           this.$message.error("表单验证失败");
         }
@@ -259,7 +253,6 @@ export default {
           if (response.data.code === 1) {
             this.$message.success("密码修改成功");
             this.passwordDialogVisible = false;
-            // 清空表单
             this.passwordForm = {
               old_pwd: "",
               new_pwd: "",
@@ -326,7 +319,6 @@ export default {
   background-color: var(--bg-base);
 }
 
-/* 顶部 Logo 栏 */
 .top-bar {
   background: rgba(13, 17, 23, 0.96);
   backdrop-filter: blur(16px);
@@ -342,7 +334,6 @@ export default {
   flex-shrink: 0;
 }
 
-/* 导航栏 */
 .nav-bar {
   background: rgba(16, 20, 28, 0.98);
   backdrop-filter: blur(12px);
@@ -383,8 +374,9 @@ export default {
   gap: 2px;
 }
 
+/* 标题字号稍微调大一点 */
 .title-main {
-  font-size: 17px;
+  font-size: 19px; /* 从17px改为19px */
   font-weight: 700;
   background: var(--accent-gradient);
   -webkit-background-clip: text;
@@ -467,5 +459,3 @@ export default {
   }
 }
 </style>
-
-
