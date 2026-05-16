@@ -1,3 +1,5 @@
+<template>
+  <div class="crack-visualization-container">
     <!-- 顶部数据概览卡片 -->
     <div class="stat-cards">
       <div class="stat-card">
@@ -61,6 +63,7 @@
         <div class="chart-wrapper" ref="positionChart"></div>
       </div>
     </div>
+  </div>
 </template>
 
 <script>
@@ -72,11 +75,10 @@ export default {
   data() {
     return {
       imageRecords: [],
-      imageTotal: 0,
+      imageTotal: 5, // 直接赋值，因为 total 只有 5 个
       imageCurrentPage: 1,
-      imagePageSize: 100, // 一次加载更多
+      imagePageSize: 10,
       crackRecords: [],
-      loading: false,
 
       overviewChart: null,
       sizeChart: null,
@@ -426,7 +428,8 @@ export default {
 };
 </script>
 
-<.crack-visualization-container {
+<style lang="less" scoped>
+.crack-visualization-container {
   min-height: 100%;
   padding: 24px;
   background-color: var(--bg-base);
