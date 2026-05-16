@@ -27,6 +27,7 @@ public class AdminController {
     public Result deleteUser(@PathVariable String uid, @RequestHeader(value = "Authorization", required = false) String token) {
         if (!isAdmin(token)) return Result.error("权限不足");
         // 防止删除自己
+        if (token == null) return Result.error("未登录或 Token 无效");
         String currentUid = JwtUtil.getUidFromJwt(token.replace("Bearer ", ""));
         if (uid.equals(currentUid)) return Result.error("不能删除当前登录的管理员账号");
         
@@ -37,9 +38,15 @@ public class AdminController {
     }
 
     private boolean isAdmin(String token) {
-        String uid = JwtUtil.getUidFromJwt(token.replace("Bearer ", ""));
-        if (uid == null) return false;
-        User user = userService.getUserByUid(uid);
-        return user != null && user.getRole() == 1;
+        if (token == null || token.isEmpty()) return false;
+        try {
+            String jwt = token.startsWith("Bearer ") ? token.replace("Bearer ", "") : token;
+            String uid = JwtUtil.getUidFromJwt(jwt);
+            if (uid == null) return false;
+            User user = userService.getUserByUid(uid);
+            return user != null && user.getRole() == 1;
+        } catch (Exception e) {
+            return false;
+        }
     }
 }

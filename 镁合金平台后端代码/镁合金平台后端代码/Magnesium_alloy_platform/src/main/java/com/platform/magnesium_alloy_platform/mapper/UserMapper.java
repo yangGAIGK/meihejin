@@ -45,4 +45,16 @@ public interface UserMapper {
     // 重置登录失败计数
     @Update("UPDATE user SET loginFailCount = 0, lockUntil = null WHERE username = #{username}")
     int resetLoginFail(@Param("username") String username);
+
+    // 管理员：获取所有用户
+    @Select("SELECT * FROM user")
+    java.util.List<User> getAllUsers();
+
+    // 管理员：按 UID 获取用户
+    @Select("SELECT * FROM user WHERE uid = #{uid}")
+    User getUserByUid(@Param("uid") String uid);
+
+    // 管理员：删除用户
+    @Delete("DELETE FROM user WHERE uid = #{uid}")
+    int deleteUser(@Param("uid") String uid);
 }

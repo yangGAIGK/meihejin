@@ -122,4 +122,19 @@ public class UserServiceImpl implements UserService {
     public Map<String, Object> getUserInfo(String uid) {
         return userDao.getUserInfo(uid);
     }
+
+    @Override
+    public java.util.List<User> getAllUsers() {
+        return userDao.getAllUsers();
+    }
+
+    @Override
+    public User getUserByUid(String uid) {
+        return userDao.getUserByUid(uid);
+    }
+
+    @Override
+    public boolean deleteUser(String uid) {
+        return userDao.deleteUser(uid) > 0;
+    }
 }

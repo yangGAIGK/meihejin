@@ -110,6 +110,49 @@
         <el-button type="primary" @click="submitPasswordForm">确 定</el-button>
       </div>
     </el-dialog>
+
+    <!-- 管理员模块：用户管理 -->
+    <div v-if="isAdmin" class="admin-management-section">
+      <div class="section-header">
+        <i class="el-icon-setting"></i>
+        <span>平台用户管理</span>
+        <el-tag type="danger" size="mini" effect="dark" style="margin-left: 10px;">管理员权限</el-tag>
+      </div>
+
+      <el-table
+          :data="userList"
+          v-loading="userLoading"
+          class="user-table"
+          :header-cell-style="{ background: '#21262d', color: '#00d4ff' }"
+      >
+        <el-table-column label="序号" type="index" width="60" align="center" />
+        <el-table-column label="头像" width="80" align="center">
+          <template slot-scope="scope">
+            <el-avatar :size="32" :src="scope.row.userUrl || defaultAvatar"></el-avatar>
+          </template>
+        </el-table-column>
+        <el-table-column prop="username" label="用户名" min-width="120" />
+        <el-table-column prop="email" label="邮箱" min-width="180" />
+        <el-table-column prop="phone" label="手机号" min-width="130" />
+        <el-table-column prop="role" label="角色" width="100" align="center">
+          <template slot-scope="scope">
+            <el-tag :type="scope.row.role === 1 ? 'danger' : 'info'" size="mini">
+              {{ scope.row.role === 1 ? '管理员' : '普通用户' }}
+            </el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="100" align="center">
+          <template slot-scope="scope">
+            <el-popconfirm
+                title="确定要删除此用户吗？此操作不可恢复！"
+                @confirm="deleteUser(scope.row.id)"
+            >
+              <el-button slot="reference" type="text" class="delete-btn" :disabled="scope.row.id === currentUid">删除</el-button>
+            </el-popconfirm>
+          </template>
+        </el-table-column>
+      </el-table>
+    </div>
   </div>
 </template>
 
@@ -168,6 +211,10 @@ export default {
           },
         ],
       },
+      isAdmin: localStorage.getItem('role') === '1',
+      currentUid: localStorage.getItem('uid'),
+      userList: [],
+      userLoading: false,
       defaultAvatar:
           "https://tyut123.oss-cn-hangzhou.aliyuncs.com/logo.jpeg?Expires=1745502590&OSSAccessKeyId=TMP.3Kp6KhxjnA6YZqhy4qB7dd5dnGS7TPLmsnRGdTRgi48nSDpXfmqoxYCwuxsMPkxNwsqnzRLHR8qMVBC9HVEAzynQ6CMxGt&Signature=aNSxVy7%2Bobw2qVa5qHy221GnKaI%3D",
     };
@@ -188,7 +235,11 @@ export default {
 
     initializeProfile() {
       this.loading = true;
-      Promise.all([this.checkLoginStatus(), this.fetchUserInfo()])
+      const tasks = [this.checkLoginStatus(), this.fetchUserInfo()];
+      if (this.isAdmin) {
+        tasks.push(this.fetchUserList());
+      }
+      Promise.all(tasks)
           .catch((error) => console.error("初始化失败:", error))
           .finally(() => {
             this.loading = false;
@@ -462,6 +513,41 @@ export default {
       this.$router.push("/login");
     },
 
+    // 管理员方法
+    async fetchUserList() {
+      this.userLoading = true;
+      try {
+        const response = await axios.get("http://localhost:8080/admin/users", {
+          headers: { Authorization: this.getAuthorization() }
+        });
+        if (response.data.code === 1) {
+          this.userList = response.data.data;
+        } else {
+          this.$message.error(response.data.msg || "获取用户列表失败");
+        }
+      } catch (error) {
+        console.error("获取用户列表失败:", error);
+      } finally {
+        this.userLoading = false;
+      }
+    },
+
+    async deleteUser(uid) {
+      try {
+        const response = await axios.delete(`http://localhost:8080/admin/user/${uid}`, {
+          headers: { Authorization: this.getAuthorization() }
+        });
+        if (response.data.code === 1) {
+          this.$message.success("更新成功");
+          this.fetchUserList(); // 刷新列表
+        } else {
+          this.$message.error(response.data.msg || "删除失败");
+        }
+      } catch (error) {
+        this.$message.error("删除用户请求失败");
+      }
+    },
+
     getAuthorization() {
       return localStorage.getItem("Authorization");
     },
@@ -584,6 +670,62 @@ export default {
   padding: 0;
   background-color: transparent !important;
   border-left: none !important;
+}
+
+/* 管理员板块样式 */
+.admin-management-section {
+  margin-top: 40px;
+  background-color: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  padding: 32px;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-card);
+  max-width: 1000px;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 24px;
+  gap: 10px;
+
+  i {
+    font-size: 20px;
+    color: var(--accent-primary);
+  }
+
+  span {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+}
+
+.user-table {
+  width: 100%;
+  background: transparent !important;
+
+  /deep/ .el-table__body tr:hover > td.el-table__cell {
+    background: rgba(0, 212, 255, 0.04) !important;
+  }
+  /deep/ .el-table tr,
+  /deep/ .el-table td.el-table__cell {
+    background: transparent !important;
+    color: var(--text-primary) !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04) !important;
+  }
+}
+
+.delete-btn {
+  color: #F56C6C !important;
+  &:hover {
+    color: #ff4d4d !important;
+    text-shadow: 0 0 8px rgba(245, 108, 108, 0.4);
+  }
+  &:disabled {
+    color: var(--text-muted) !important;
+    cursor: not-allowed;
+  }
 }
 </style>
 

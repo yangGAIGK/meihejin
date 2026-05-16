@@ -37,4 +37,10 @@ public interface UserService {
     boolean updatePassword(String username, String encryptedOldPwd, String encryptedNewPwd);
 
     Map<String, Object> getUserInfo(String uid);
+
+    java.util.List<User> getAllUsers();
+
+    User getUserByUid(String uid);
+
+    boolean deleteUser(String uid);
 }
