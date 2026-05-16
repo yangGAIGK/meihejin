@@ -21,40 +21,92 @@ public class UserController {
     @Autowired
     private UserService userService;
 
-    // 注册接口
-    @PostMapping("/registerservlet")  // 这个路径会是 "/user/registerservlet"
-    public Result register(@RequestBody UserDTO userDTO) {
-        // 检查用户名是否已存在
-        User existingUser = userService.getUserByUsername(userDTO.getUsername());
-        if (existingUser != null) {
-            return Result.error("Username already exists.");
+    // ==================== 注册 ====================
+    @PostMapping("/registerservlet")
+    public Result register(@RequestBody Map<String, String> body) {
+        String username = body.get("username");
+        String password = body.get("password");
+        String email    = body.get("email");
+        String phone    = body.get("phone");
+        String userUrl  = body.get("userUrl");
+
+        // 用户名唯一
+        if (userService.getUserByUsername(username) != null) {
+            return Result.error("用户名已存在");
+        }
+        // 邮箱唯一
+        if (userService.emailExists(email)) {
+            return Result.error("该邮箱已被注册");
+        }
+        // 手机号唯一
+        if (userService.phoneExists(phone)) {
+            return Result.error("该手机号已被注册");
         }
 
-        // 创建新用户并注册
         User newUser = new User();
-        newUser.setUsername(userDTO.getUsername());
-        newUser.setPassword(userDTO.getPassword());
-        newUser.setEmail(userDTO.getEmail());
-        newUser.setUserUrl(userDTO.getUserUrl());
+        newUser.setUsername(username);
+        newUser.setPassword(password);
+        newUser.setEmail(email);
+        newUser.setPhone(phone);
+        newUser.setUserUrl(userUrl != null ? userUrl : "https://tyut123.oss-cn-hangzhou.aliyuncs.com/logo.jpeg");
 
-        // 注册用户
         userService.registerUser(newUser);
-
-        return Result.success("Registration successful.");
+        return Result.success("注册成功");
     }
 
-    // 登录接口
-    @PostMapping("/login")  // 这个路径会是 "/user/login"
-    public Result login(@RequestBody UserDTO userDTO) {
-        // 登录验证
-        String token = userService.login(userDTO);
+    // ==================== 登录（带锁定） ====================
+    @PostMapping("/login")
+    public ResponseEntity<Map<String, Object>> login(@RequestBody UserDTO userDTO) {
+        Map<String, Object> result = userService.loginWithLock(userDTO);
+        HttpStatus status = (Integer) result.get("code") == 1 ? HttpStatus.OK : HttpStatus.OK;
+        return new ResponseEntity<>(result, status);
+    }
 
-        if (token == null) {
-            return Result.error("Invalid username or password.");
+    // ==================== 找回密码 - 验证身份（邮箱+手机号） ====================
+    @PostMapping("/verifyUser")
+    public Result verifyUser(@RequestBody Map<String, String> body) {
+        String email = body.get("email");
+        String phone = body.get("phone");
+        String uid = userService.verifyByEmailAndPhone(email, phone);
+        if (uid != null) {
+            Map<String, String> data = new HashMap<>();
+            data.put("uid", uid);
+            return Result.success(data);
         }
+        return Result.error("邮箱或手机号不匹配");
+    }
 
-        // 登录成功，返回 JWT
-        return Result.success(token);
+    // ==================== 找回密码 - 重置密码 ====================
+    @PutMapping("/resetPwd")
+    public Result resetPwd(@RequestBody Map<String, String> body) {
+        String uid    = body.get("uid");
+        String newPwd = body.get("newPwd");
+        if (userService.resetPassword(uid, newPwd)) {
+            return Result.success("密码重置成功");
+        }
+        return Result.error("密码重置失败");
+    }
+
+    // ==================== 旧接口保留兼容 ====================
+    @PutMapping("/forgetPwd")
+    public ResponseEntity<Map<String, Object>> forgetPassword(@RequestBody Map<String, String> request) {
+        String username = request.get("username");
+        String email = request.get("email");
+        String newPwd = request.get("new_pwd");
+
+        Map<String, Object> result = new HashMap<>();
+        String encryptedPwd = Md5Util.getMD5String(newPwd);
+        if (userService.forgetPassword(username, email, encryptedPwd)) {
+            result.put("code", 1);
+            result.put("msg", "更新密码成功");
+            result.put("data", null);
+            return new ResponseEntity<>(result, HttpStatus.OK);
+        } else {
+            result.put("code", 0);
+            result.put("msg", "更新密码失败，用户名或邮箱不正确");
+            result.put("data", null);
+            return new ResponseEntity<>(result, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
     }
 
     @PutMapping("/update")
@@ -62,13 +114,9 @@ public class UserController {
             @RequestBody Map<String, Object> request,
             @RequestHeader("Authorization") String authorizationHeader) {
 
-        // 从 Authorization 头中提取 JWT token（假设格式为 "Bearer <token>"）
         String token = authorizationHeader.replace("Bearer ", "");
-
-        // 获取当前用户的 UID，从 JWT token 中提取
         String uid = JwtUtil.getUidFromJwt(token);
 
-        // 检查 uid 是否为 null 或空
         if (uid == null || uid.isEmpty()) {
             Map<String, Object> result1 = new HashMap<>();
             result1.put("code", 0);
@@ -89,27 +137,6 @@ public class UserController {
         } else {
             result.put("code", 0);
             result.put("msg", "更新基本信息失败");
-            result.put("data", null);
-            return new ResponseEntity<>(result, HttpStatus.INTERNAL_SERVER_ERROR);
-        }
-    }
-
-    @PutMapping("/forgetPwd")
-    public ResponseEntity<Map<String, Object>> forgetPassword(@RequestBody Map<String, String> request) {
-        String username = request.get("username");
-        String email = request.get("email");
-        String newPwd = request.get("new_pwd");
-
-        Map<String, Object> result = new HashMap<>();
-        String encryptedPwd = Md5Util.getMD5String(newPwd);
-        if (userService.forgetPassword(username, email, encryptedPwd)) {
-            result.put("code", 1);
-            result.put("msg", "更新密码成功");
-            result.put("data", null);
-            return new ResponseEntity<>(result, HttpStatus.OK);
-        } else {
-            result.put("code", 0);
-            result.put("msg", "更新密码失败，用户名或邮箱不正确");
             result.put("data", null);
             return new ResponseEntity<>(result, HttpStatus.INTERNAL_SERVER_ERROR);
         }
@@ -140,13 +167,9 @@ public class UserController {
 
     @GetMapping("/info")
     public ResponseEntity<Map<String, Object>> getUserInfo(@RequestHeader("Authorization") String authorizationHeader) {
-        // 从 Authorization 头中提取 JWT token（假设格式为 "Bearer <token>"）
         String token = authorizationHeader.replace("Bearer ", "");
-
-        // 获取当前用户的 UID，从 JWT token 中提取
         String uid = JwtUtil.getUidFromJwt(token);
 
-        // 检查 uid 是否为 null 或空
         if (uid == null || uid.isEmpty()) {
             Map<String, Object> result1 = new HashMap<>();
             result1.put("code", 0);
