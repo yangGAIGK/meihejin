@@ -1,232 +1,210 @@
 <template>
-  <div class="container">
-    <h1 class="title">历史记录</h1>
-
-    <!-- 筛选条件 -->
-    <div class="filter-container">
-      <el-form :inline="true" class="filter-form" label-width="auto">
-        <div class="filter-items">
-          <el-form-item>
-            <label class="custom-label">平均晶粒尺寸：</label>
-            <div class="range-input">
-              <el-input
-                  v-model.number="filters.aveLengthMin"
-                  placeholder="最小值"
-                  size="small"
-                  class="custom-input"
-              ></el-input>
-              <span class="separator">-</span>
-              <el-input
-                  v-model.number="filters.aveLengthMax"
-                  placeholder="最大值"
-                  size="small"
-                  class="custom-input"
-              ></el-input>
-            </div>
-          </el-form-item>
-
-          <el-form-item>
-            <label class="custom-label">离散特征值：</label>
-            <div class="range-input">
-              <el-input
-                  v-model.number="filters.lisanValueMin"
-                  placeholder="最小值"
-                  size="small"
-                  class="custom-input"
-              ></el-input>
-              <span class="separator">-</span>
-              <el-input
-                  v-model.number="filters.lisanValueMax"
-                  placeholder="最大值"
-                  size="small"
-                  class="custom-input"
-              ></el-input>
-            </div>
-          </el-form-item>
-
-          <el-form-item>
-            <label class="custom-label">硬度：</label>
-            <div class="range-input">
-              <el-input
-                  v-model.number="filters.hardnessMin"
-                  placeholder="最小值"
-                  size="small"
-                  class="custom-input"
-              ></el-input>
-              <span class="separator">-</span>
-              <el-input
-                  v-model.number="filters.hardnessMax"
-                  placeholder="最大值"
-                  size="small"
-                  class="custom-input"
-              ></el-input>
-            </div>
-          </el-form-item>
-
-          <el-form-item>
-            <label class="custom-label">屈服强度：</label>
-            <div class="range-input">
-              <el-input
-                  v-model.number="filters.yieldStrengthMin"
-                  placeholder="最小值"
-                  size="small"
-                  class="custom-input"
-              ></el-input>
-              <span class="separator">-</span>
-              <el-input
-                  v-model.number="filters.yieldStrengthMax"
-                  placeholder="最大值"
-                  size="small"
-                  class="custom-input"
-              ></el-input>
-            </div>
-          </el-form-item>
-
-          <el-form-item>
-            <label class="custom-label">抗拉强度：</label>
-            <div class="range-input">
-              <el-input
-                  v-model.number="filters.strengthExtensionMin"
-                  placeholder="最小值"
-                  size="small"
-                  class="custom-input"
-              ></el-input>
-              <span class="separator">-</span>
-              <el-input
-                  v-model.number="filters.strengthExtensionMax"
-                  placeholder="最大值"
-                  size="small"
-                  class="custom-input"
-              ></el-input>
-            </div>
-          </el-form-item>
-        </div>
-
-        <div class="filter-buttons">
-          <el-button type="primary" class="filter-button" @click="filterData" size="small">
-            <i class="el-icon-search"></i> 筛选
-          </el-button>
-          <el-button class="filter-button" @click="clearFilters" size="small">
-            <i class="el-icon-close"></i> 取消筛选
-          </el-button>
-        </div>
-      </el-form>
+  <div class="history-hub">
+    <!-- 顶部标题栏 -->
+    <div class="hub-header">
+      <div class="hub-title">
+        <i class="el-icon-time"></i>
+        <span>历史中心</span>
+        <span class="hub-subtitle">HISTORY HUB</span>
+      </div>
+      <div class="hub-actions">
+        <el-date-picker
+          v-model="dateRange"
+          type="daterange"
+          range-separator="至"
+          start-placeholder="开始日期"
+          end-placeholder="结束日期"
+          value-format="yyyy-MM-dd"
+          size="small"
+          style="margin-right:10px;"
+          @change="onDateChange"
+        />
+        <el-button size="small" type="primary" icon="el-icon-download" @click="exportExcel">导出 Excel</el-button>
+      </div>
     </div>
 
-    <!-- 当没有数据时显示的空状态 -->
-    <div class="image-container" v-if="!visual">
-      <el-empty description="暂无数据" class="empty-state"></el-empty>
-    </div>
-
-    <!-- 表格组件 -->
-    <div class="table-wrapper" v-else>
-      <el-table
-          border
-          :data="table"
-          class="custom-table"
-          ref="table"
-          v-loading="loading"
-          :header-cell-style="{ background: '#21262d', color: '#00d4ff', borderBottom: '1px solid rgba(0,212,255,0.15)' }"
+    <!-- Tab 切换 -->
+    <div class="tab-bar">
+      <div
+        v-for="tab in tabs"
+        :key="tab.key"
+        class="tab-item"
+        :class="{ active: activeTab === tab.key }"
+        @click="switchTab(tab.key)"
       >
-        <!-- 勾选框列，根据 showCheckbox 决定是否显示 -->
-        <el-table-column type="selection" width="55" v-if="showCheckbox"></el-table-column>
-
-        <el-table-column label="序号" width="60" align="center">
-          <template slot-scope="scope">
-            {{ (currentPage - 1) * pageSize + scope.$index + 1 }}
-          </template>
-        </el-table-column>
-
-        <!-- 其他数据列，按后端返回的字段名绑定 -->
-        <el-table-column prop="aveLength" label="平均晶粒尺寸" min-width="200" align="center" />
-        <el-table-column prop="lisanValue" label="离散特征值" min-width="200" align="center" />
-        <el-table-column prop="hardness" label="硬度" min-width="200" align="center" />
-        <el-table-column prop="yieldStrength" label="屈服强度" min-width="200" align="center" />
-        <el-table-column prop="strengthExtension" label="抗拉强度" min-width="200" align="center" />
-
-        <!-- 可选列 -->
-        <el-table-column
-            v-if="showOptionalColumns"
-            prop="inputLayer"
-            label="输入层"
-            min-width="200"
-            align="center"
-        />
-        <el-table-column
-            v-if="showOptionalColumns"
-            prop="outputLayer"
-            label="输出层"
-            min-width="200"
-            align="center"
-        />
-        <el-table-column
-            v-if="showOptionalColumns"
-            prop="intermediateLayer"
-            label="中间层"
-            min-width="200"
-            align="center"
-        />
-        <el-table-column
-            v-if="showOptionalColumns"
-            prop="options"
-            label="选项"
-            min-width="200"
-            align="center"
-        />
-        <el-table-column
-            v-if="showOptionalColumns"
-            prop="numberOfCycles"
-            label="循环次数"
-            min-width="200"
-            align="center"
-        />
-        <el-table-column
-            v-if="showOptionalColumns"
-            prop="learningRate"
-            label="学习率"
-            min-width="200"
-            align="center"
-        />
-        <el-table-column
-            v-if="showOptionalColumns"
-            prop="errorTargetValue"
-            label="误差目标值"
-            min-width="200"
-            align="center"
-        />
-
-        <el-table-column prop="createTime" label="创建时间" min-width="200" align="center" />
-        <el-table-column prop="updateTime" label="更新时间" min-width="200" align="center" />
-      </el-table>
+        <i :class="tab.icon"></i>
+        <span>{{ tab.label }}</span>
+        <span class="tab-count">{{ tabCounts[tab.key] }}</span>
+      </div>
     </div>
 
-    <!-- 按钮区域 -->
-    <div class="button-container" v-if="visual">
-      <el-button type="danger" @click="toggleCheckbox" v-if="!showCheckbox" size="small">删除</el-button>
-      <el-button type="success" @click="exportData" v-if="!showCheckbox" size="small">导出数据</el-button>
-      <template v-if="showCheckbox">
-        <el-button type="danger" @click="batchDelete" size="small">确认删除</el-button>
-        <el-button @click="toggleCheckbox" size="small">取消</el-button>
+    <!-- 内容区 -->
+    <div class="hub-content" v-loading="loading">
+      <!-- 管理员 UID 过滤提示 -->
+      <div class="admin-badge-bar" v-if="isAdmin">
+        <el-tag type="danger" effect="dark" size="mini">管理员模式 · 显示所有用户数据</el-tag>
+      </div>
+
+      <!-- 空状态 -->
+      <div class="empty-block" v-if="!loading && currentRows.length === 0">
+        <el-empty description="暂无历史记录" />
+      </div>
+
+      <!-- ===== 性能预测 Tab ===== -->
+      <template v-if="activeTab === 'performance' && currentRows.length > 0">
+        <div style="margin-bottom:12px;">
+          <el-button size="mini" @click="showPerfExtra = !showPerfExtra">
+            {{ showPerfExtra ? '隐藏参数详情' : '显示参数详情（BP专属）' }}
+          </el-button>
+        </div>
+        <el-table
+          ref="perfTable"
+          :data="currentRows"
+          @selection-change="onSelectionChange"
+          class="hub-table"
+          :header-cell-style="tableHeaderStyle"
+        >
+          <el-table-column type="selection" width="50" />
+          <el-table-column type="index" label="#" width="55" align="center" />
+          <el-table-column prop="uid" label="用户UID" width="110" v-if="isAdmin" show-overflow-tooltip />
+          <el-table-column label="模型" width="90" align="center">
+            <template slot-scope="scope">
+              <el-tag size="mini" :type="scope.row._type === 'BP' ? 'primary' : scope.row._type === 'PSO' ? 'success' : 'warning'">
+                {{ scope.row._type }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="aveLength" label="平均晶粒尺寸" align="center" min-width="120" />
+          <el-table-column prop="lisanValue" label="离散特征值" align="center" min-width="110" />
+          <el-table-column prop="hardness" label="硬度" align="center" />
+          <el-table-column prop="yieldStrength" label="屈服强度" align="center" min-width="100" />
+          <el-table-column prop="strengthExtension" label="抗拉强度" align="center" min-width="100" />
+          <!-- BP专属参数列 -->
+          <el-table-column v-if="showPerfExtra" prop="inputLayer" label="输入层" align="center" min-width="80" />
+          <el-table-column v-if="showPerfExtra" prop="outputLayer" label="输出层" align="center" min-width="80" />
+          <el-table-column v-if="showPerfExtra" prop="intermediateLayer" label="中间层" align="center" min-width="80" />
+          <el-table-column v-if="showPerfExtra" prop="numberOfCycles" label="循环次数" align="center" min-width="90" />
+          <el-table-column v-if="showPerfExtra" prop="learningRate" label="学习率" align="center" min-width="80" />
+          <el-table-column v-if="showPerfExtra" prop="errorTargetValue" label="误差目标" align="center" min-width="90" />
+          <el-table-column prop="createTime" label="创建时间" width="170" align="center" />
+          <el-table-column label="操作" width="80" align="center">
+            <template slot-scope="scope">
+              <el-button type="text" style="color:#F56C6C" @click="deleteSingle('performance', scope.row)">删除</el-button>
+            </template>
+          </el-table-column>
+        </el-table>
       </template>
-      <el-button @click="toggleOptionalColumns" size="small">
-        {{ showOptionalColumns ? '隐藏更多' : '显示更多' }}
-      </el-button>
-    </div>
 
-    <!-- 分页组件 -->
-    <el-pagination
-        v-if="total > 0"
+      <!-- ===== 裂纹识别 Tab ===== -->
+      <template v-if="activeTab === 'crack' && currentRows.length > 0">
+        <el-table
+          ref="crackTable"
+          :data="currentRows"
+          @selection-change="onSelectionChange"
+          class="hub-table"
+          :header-cell-style="tableHeaderStyle"
+        >
+          <el-table-column type="selection" width="50" />
+          <el-table-column type="index" label="#" width="55" align="center" />
+          <el-table-column prop="uid" label="用户UID" width="110" v-if="isAdmin" show-overflow-tooltip />
+          <el-table-column label="图片预览" width="90" align="center">
+            <template slot-scope="scope">
+              <el-image
+                :src="scope.row.ImageUrl"
+                style="width:60px;height:40px;border-radius:4px;cursor:pointer;"
+                :preview-src-list="[scope.row.ImageUrl]"
+                fit="cover"
+              />
+            </template>
+          </el-table-column>
+          <el-table-column prop="ImageUrl" label="图片路径" show-overflow-tooltip min-width="200" />
+          <el-table-column label="裂纹数" width="80" align="center">
+            <template slot-scope="scope">
+              <el-tag size="mini" :type="scope.row._crackCount > 0 ? 'danger' : 'info'">
+                {{ scope.row._crackCount !== undefined ? scope.row._crackCount : '-' }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="createTime" label="识别时间" width="170" align="center" />
+          <el-table-column label="操作" width="80" align="center">
+            <template slot-scope="scope">
+              <el-button type="text" style="color:#F56C6C" @click="deleteSingle('crack', scope.row)">删除</el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+      </template>
+
+      <!-- ===== 温度预测 Tab ===== -->
+      <template v-if="activeTab === 'temperature' && currentRows.length > 0">
+        <el-table
+          ref="tempTable"
+          :data="currentRows"
+          @selection-change="onSelectionChange"
+          class="hub-table"
+          :header-cell-style="tableHeaderStyle"
+        >
+          <el-table-column type="selection" width="50" />
+          <el-table-column type="index" label="#" width="55" align="center" />
+          <el-table-column prop="uid" label="用户UID" width="120" v-if="isAdmin" show-overflow-tooltip />
+          <el-table-column prop="fileName" label="文件名" align="center" />
+          <el-table-column prop="temp" label="预测温度 (℃)" width="150" align="center">
+            <template slot-scope="scope">
+              <span style="color:#67C23A;font-weight:bold;">{{ scope.row.temp }}</span>
+            </template>
+          </el-table-column>
+          <el-table-column prop="time" label="预测时间" width="180" align="center" />
+          <el-table-column label="操作" width="80" align="center">
+            <template slot-scope="scope">
+              <el-button type="text" style="color:#F56C6C" @click="deleteSingle('temperature', scope.row)">删除</el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+      </template>
+
+      <!-- 分页 -->
+      <el-pagination
+        v-if="totalRows > 0"
         @size-change="handleSizeChange"
         @current-change="handleCurrentChange"
         :current-page="currentPage"
         :page-sizes="[10, 20, 50, 100]"
         :page-size="pageSize"
         layout="total, sizes, prev, pager, next, jumper"
-        :total="total"
-        :hide-on-single-page="true"
-        class="pagination"
+        :total="totalRows"
+        class="hub-pagination"
+      />
+    </div>
+
+    <!-- 底部操作栏 -->
+    <div class="hub-footer" v-if="selectedRows.length > 0">
+      <span class="selected-tip">已选择 <b>{{ selectedRows.length }}</b> 条记录</span>
+      <el-button type="danger" size="small" icon="el-icon-delete" @click="batchDelete">批量删除</el-button>
+      <el-button size="small" @click="clearSelection">取消选择</el-button>
+    </div>
+
+    <!-- 密码确认删除对话框 -->
+    <el-dialog
+      title="操作确认"
+      :visible.sync="pwdDialogVisible"
+      width="360px"
+      :close-on-click-modal="false"
     >
-    </el-pagination>
+      <div class="pwd-dialog-body">
+        <i class="el-icon-warning" style="color:#E6A23C;font-size:28px;margin-bottom:10px;"></i>
+        <p style="color:var(--text-secondary);margin-bottom:16px;">首次执行删除操作，请输入您的登录密码以确认</p>
+        <el-input
+          v-model="confirmPassword"
+          type="password"
+          show-password
+          placeholder="请输入登录密码"
+          @keyup.enter.native="submitDelete"
+        />
+      </div>
+      <span slot="footer">
+        <el-button @click="pwdDialogVisible = false">取消</el-button>
+        <el-button type="danger" @click="submitDelete" :loading="deleting">确认删除</el-button>
+      </span>
+    </el-dialog>
   </div>
 </template>
 
@@ -234,553 +212,500 @@
 import axios from 'axios';
 import ExportJsonExcel from 'js-export-excel';
 
+const BASE = 'http://localhost:8080';
+
 export default {
+  name: 'HistoryHub',
   data() {
     return {
-      visual: false,
-      // 新增：用于存储原始数据，包含 ID 和 UID
-      originalTableData: [],
-      filteredTable: [],
-      total: 0,
+      activeTab: 'performance',
+      showPerfExtra: false,
+      tabs: [
+        { key: 'performance', label: '性能预测', icon: 'el-icon-s-data' },
+        { key: 'crack',       label: '裂纹识别', icon: 'el-icon-camera' },
+        { key: 'temperature', label: '温度预测', icon: 'el-icon-picture' },
+      ],
+      // 各模块原始数据
+      perfData: [],   // 合并 BP+PSO+PSOBP
+      crackData: [],
+      tempData: [],
+      // 日期筛选后的数据
+      perfFiltered: [],
+      crackFiltered: [],
+      tempFiltered: [],
+
+      dateRange: null,
+      loading: false,
       currentPage: 1,
       pageSize: 10,
-      loading: false,
-      showCheckbox: false,
-      filters: {
-        aveLengthMin: null,
-        aveLengthMax: null,
-        lisanValueMin: null,
-        lisanValueMax: null,
-        hardnessMin: null,
-        hardnessMax: null,
-        yieldStrengthMin: null,
-        yieldStrengthMax: null,
-        strengthExtensionMin: null,
-        strengthExtensionMax: null,
-      },
-      table: [],
-      isClear: false,
-      showOptionalColumns: false,
+      selectedRows: [],
+
+      isAdmin: localStorage.getItem('role') === '1',
+
+      // 删除相关
+      pwdDialogVisible: false,
+      confirmPassword: '',
+      deleting: false,
+      deleteVerified: false, // 本次会话是否已经验证过密码
+      pendingDeleteTask: null, // { type, ids }
+
+      tableHeaderStyle: {
+        background: '#21262d',
+        color: '#00d4ff',
+        borderBottom: '1px solid rgba(0,212,255,0.15)'
+      }
     };
   },
+  computed: {
+    currentData() {
+      const map = { performance: this.perfFiltered, crack: this.crackFiltered, temperature: this.tempFiltered };
+      return map[this.activeTab] || [];
+    },
+    currentRows() {
+      const start = (this.currentPage - 1) * this.pageSize;
+      return this.currentData.slice(start, start + this.pageSize);
+    },
+    totalRows() {
+      return this.currentData.length;
+    },
+    tabCounts() {
+      return {
+        performance: this.perfFiltered.length,
+        crack: this.crackFiltered.length,
+        temperature: this.tempFiltered.length,
+      };
+    }
+  },
+  async mounted() {
+    await this.loadAll();
+  },
   methods: {
-    async fetchHistoryData() {
+    getHeaders() {
+      const token = localStorage.getItem('Authorization');
+      return { Authorization: token ? `Bearer ${token}` : '' };
+    },
+
+    // =========== 数据加载 ===========
+    async loadAll() {
       this.loading = true;
+      await Promise.all([this.loadPerf(), this.loadCrack(), this.loadTemp()]);
+      this.applyDateFilter();
+      this.loading = false;
+    },
+
+    async loadPerf() {
       try {
-        const token = localStorage.getItem('Authorization');
-        if (!token) {
-          this.$message.error('请先登录');
-          this.loading = false;
-          return;
-        }
-
-        const response = await axios.post(
-            'http://localhost:8080/bphistory', // 确保URL正确
-            {
-              page: 1,
-              pageSize: 10000,
-            },
-            {
-              headers: {
-                Authorization: `Bearer ${token}`,
-              },
-            }
-        );
-
-        if (response.data.code === 1) {
-          // 保存原始数据
-          this.originalTableData = response.data.data.records || [];
-          this.filteredTable = response.data.data.records || [];
-          this.total = response.data.data.total || 0;
-          this.visual = true;
-          this.table = this.processTableData(this.filteredTable); // 处理数据以隐藏 ID 和 UID
-          this.filterData();
-        } else {
-          this.$message.error(response.data.msg || '获取历史记录失败');
-          this.originalTableData = [];
-          this.filteredTable = [];
-          this.total = 0;
-          this.visual = false;
-        }
-      } catch (error) {
-        console.error('获取历史记录失败：', error);
-        this.$message.error('网络错误，请稍后再试');
-        this.visual = false;
-      } finally {
-        this.loading = false;
-      }
+        const headers = this.getHeaders();
+        const payload  = { page: 1, pageSize: 10000 };
+        const [bpRes, psoRes, psobpRes] = await Promise.allSettled([
+          axios.post(`${BASE}/bphistory`,    payload, { headers }),
+          axios.post(`${BASE}/psohistory`,   payload, { headers }),
+          axios.post(`${BASE}/psobphistory`, payload, { headers }),
+        ]);
+        const tag = (res, type) =>
+          res.status === 'fulfilled' && res.value.data.code === 1
+            ? (res.value.data.data.records || []).map(r => ({ ...r, _type: type }))
+            : [];
+        this.perfData = [
+          ...tag(bpRes,    'BP'),
+          ...tag(psoRes,   'PSO'),
+          ...tag(psobpRes, 'PSO-BP'),
+        ].sort((a, b) => new Date(b.createTime) - new Date(a.createTime));
+      } catch (e) { console.error('性能预测历史加载失败', e); }
     },
-    // 新增：处理表格数据，移除 ID 和 UID
-    processTableData(data) {
-      return data.map(({ id, uid, ...rest }) => rest);
-    },
-    filterData() {
-      let filteredData = this.filteredTable.filter(item => {
-        if (
-            this.filters.aveLengthMin !== null &&
-            item.aveLength < this.filters.aveLengthMin
-        )
-          return false;
-        if (
-            this.filters.aveLengthMax !== null &&
-            item.aveLength > this.filters.aveLengthMax
-        )
-          return false;
-        if (
-            this.filters.lisanValueMin !== null &&
-            item.lisanValue < this.filters.lisanValueMin
-        )
-          return false;
-        if (
-            this.filters.lisanValueMax !== null &&
-            item.lisanValue > this.filters.lisanValueMax
-        )
-          return false;
-        if (
-            this.filters.hardnessMin !== null &&
-            item.hardness < this.filters.hardnessMin
-        )
-          return false;
-        if (
-            this.filters.hardnessMax !== null &&
-            item.hardness > this.filters.hardnessMax
-        )
-          return false;
-        if (
-            this.filters.yieldStrengthMin !== null &&
-            item.yieldStrength < this.filters.yieldStrengthMin
-        )
-          return false;
-        if (
-            this.filters.yieldStrengthMax !== null &&
-            item.yieldStrength > this.filters.yieldStrengthMax
-        )
-          return false;
-        if (
-            this.filters.strengthExtensionMin !== null &&
-            item.strengthExtension < this.filters.strengthExtensionMin
-        )
-          return false;
-        if (
-            this.filters.strengthExtensionMax !== null &&
-            item.strengthExtension > this.filters.strengthExtensionMax
-        )
-          return false;
-        return true;
-      });
 
-      this.table = this.processTableData(filteredData.slice(0, this.pageSize));
+    async loadCrack() {
+      try {
+        const res = await axios.post(`${BASE}/imageQuery`, { page: 1, pageSize: 10000 }, { headers: this.getHeaders() });
+        if (res.data.code === 1) {
+          const images = res.data.data.rows || [];
+          // 批量查询每张图对应的裂纹数
+          const crackCounts = await Promise.allSettled(
+            images.map(img =>
+              axios.post(`${BASE}/crackQuery`, { ImageUrl: img.ImageUrl }, { headers: this.getHeaders() })
+            )
+          );
+          this.crackData = images.map((img, i) => ({
+            ...img,
+            _crackCount: crackCounts[i].status === 'fulfilled' && crackCounts[i].value.data.code === 1
+              ? (crackCounts[i].value.data.data.rows || []).length
+              : 0
+          }));
+        }
+      } catch (e) { console.error('裂纹识别历史加载失败', e); }
+    },
+
+    async loadTemp() {
+      try {
+        const res = await axios.get(`${BASE}/tempHistory/list`, { headers: this.getHeaders() });
+        if (res.data && res.data.code === 1) {
+          this.tempData = res.data.data.map(item => ({
+            ...item,
+            time: item.time ? item.time.replace('T', ' ').substring(0, 19) : ''
+          }));
+        }
+      } catch (e) { console.error('温度预测历史加载失败', e); }
+    },
+
+    // =========== 日期筛选 ===========
+    applyDateFilter() {
+      const filter = (list, timeKey) => {
+        if (!this.dateRange || this.dateRange.length !== 2) return [...list];
+        const start = new Date(this.dateRange[0] + ' 00:00:00').getTime();
+        const end   = new Date(this.dateRange[1] + ' 23:59:59').getTime();
+        return list.filter(item => {
+          const t = new Date((item[timeKey] || '').replace('T', ' ')).getTime();
+          return t >= start && t <= end;
+        });
+      };
+      this.perfFiltered  = filter(this.perfData, 'createTime');
+      this.crackFiltered = filter(this.crackData, 'createTime');
+      this.tempFiltered  = filter(this.tempData, 'time');
       this.currentPage = 1;
     },
-    handleSizeChange(newSize) {
-      this.pageSize = newSize;
-      this.filterData();
+
+    onDateChange() {
+      this.applyDateFilter();
     },
-    handleCurrentChange(newPage) {
-      this.currentPage = newPage;
-      const startIndex = (newPage - 1) * this.pageSize;
-      const endIndex = newPage * this.pageSize;
-      this.table = this.processTableData(this.filteredTable.slice(startIndex, endIndex));
+
+    // =========== Tab 切换 ===========
+    switchTab(key) {
+      this.activeTab = key;
+      this.currentPage = 1;
+      this.selectedRows = [];
     },
-    toggleCheckbox() {
-      this.showCheckbox = !this.showCheckbox;
-      if (!this.showCheckbox) {
-        this.$refs.table.clearSelection();
+
+    // =========== 选择 ===========
+    onSelectionChange(rows) {
+      this.selectedRows = rows;
+    },
+
+    clearSelection() {
+      const refMap = { performance: 'perfTable', crack: 'crackTable', temperature: 'tempTable' };
+      const ref = this.$refs[refMap[this.activeTab]];
+      if (ref) ref.clearSelection();
+      this.selectedRows = [];
+    },
+
+    // =========== 删除逻辑 ===========
+    deleteSingle(type, row) {
+      const ids = type === 'performance' ? [row.id]
+                : type === 'crack'       ? [row.ImageUrl]
+                : [row.id];
+      this.triggerDelete({ type, ids, row });
+    },
+
+    batchDelete() {
+      if (this.selectedRows.length === 0) {
+        this.$message.warning('请先选择要删除的记录');
+        return;
+      }
+      const ids = this.activeTab === 'performance' ? this.selectedRows.map(r => r.id)
+                : this.activeTab === 'crack'       ? this.selectedRows.map(r => r.ImageUrl)
+                : this.selectedRows.map(r => r.id);
+      this.triggerDelete({ type: this.activeTab, ids });
+    },
+
+    triggerDelete(task) {
+      this.pendingDeleteTask = task;
+      if (!this.deleteVerified) {
+        // 首次需要密码验证
+        this.confirmPassword = '';
+        this.pwdDialogVisible = true;
+      } else {
+        this.executeDelete(task);
       }
     },
-    async batchDelete() {
+
+    async submitDelete() {
+      if (!this.confirmPassword) {
+        this.$message.warning('请输入密码');
+        return;
+      }
+      this.deleting = true;
       try {
-        // 使用原始数据获取选中的 ID
-        const selectedIds = this.$refs.table.selection.map(item => {
-          const originalItem = this.originalTableData.find(
-              original => original.aveLength === item.aveLength &&
-                  original.lisanValue === item.lisanValue &&
-                  original.hardness === item.hardness &&
-                  original.yieldStrength === item.yieldStrength &&
-                  original.strengthExtension === item.strengthExtension
-          );
-          return originalItem ? originalItem.id : null;
-        }).filter(id => id !== null);
-
-        if (selectedIds.length === 0) {
-          this.$message.warning('请至少选择一条记录');
-          return;
+        const username = localStorage.getItem('username');
+        // 用登录接口验证密码
+        const res = await axios.post(`${BASE}/user/login`, {
+          username,
+          password: this.confirmPassword
+        });
+        if (res.data.code === 1) {
+          this.deleteVerified = true;
+          this.pwdDialogVisible = false;
+          this.confirmPassword = '';
+          await this.executeDelete(this.pendingDeleteTask);
+        } else {
+          this.$message.error('密码错误，请重新输入');
         }
+      } catch(e) {
+        this.$message.error('验证失败：' + e.message);
+      } finally {
+        this.deleting = false;
+      }
+    },
 
-        const confirmDelete = await this.$confirm(
-            '确定要删除选中的记录吗？',
-            '提示',
-            {
-              confirmButtonText: '确定',
-              cancelButtonText: '取消',
-              type: 'warning',
-            }
-        );
-
-        if (confirmDelete) {
-          const response = await axios.delete(
-              'http://localhost:8080/BPHistory/delete',
-              {
-                data: { ids: selectedIds },
-              }
-          );
-
-          if (response.data.code === 1) {
-            this.$message.success('删除成功');
-            await this.fetchHistoryData(); // 重新加载数据
-            this.filterData();
-            this.showCheckbox = false;
+    async executeDelete({ type, ids, row }) {
+      try {
+        let res;
+        if (type === 'performance') {
+          // 按模型类型路由到不同删除接口
+          const endpointMap = { BP: '/BPHistory/delete', PSO: '/PSOHistory/delete', 'PSO-BP': '/PSOBPHistory/delete' };
+          const modelType = row ? row._type : 'BP';
+          const endpoint = endpointMap[modelType] || '/BPHistory/delete';
+          res = await axios.delete(`${BASE}${endpoint}`, { data: { ids }, headers: this.getHeaders() });
+          if (res.data.code === 1) { this.$message.success('删除成功'); await this.loadPerf(); }
+          else this.$message.error(res.data.msg || '删除失败');
+        } else if (type === 'crack') {
+          res = await axios.delete(`${BASE}/deleteCrack`, {
+            params: { ImageUrls: ids },
+            headers: this.getHeaders()
+          });
+          if (res.data.code === 1) { this.$message.success('删除成功'); await this.loadCrack(); }
+          else this.$message.error(res.data.msg || '删除失败');
+        } else if (type === 'temperature') {
+          if (ids.length === 1) {
+            res = await axios.delete(`${BASE}/tempHistory/delete/${ids[0]}`, { headers: this.getHeaders() });
           } else {
-            this.$message.error(response.data.msg || '删除失败');
+            res = await axios.delete(`${BASE}/tempHistory/batchDelete`, { data: { ids }, headers: this.getHeaders() });
           }
+          if (res.data.code === 1) { this.$message.success('删除成功'); await this.loadTemp(); }
+          else this.$message.error(res.data.msg || '删除失败');
         }
-      } catch (error) {
-        this.$message.info('已取消删除');
+        this.applyDateFilter();
+        this.clearSelection();
+      } catch(e) {
+        console.error('删除失败', e);
+        this.$message.error('删除请求失败');
       }
     },
-    clearFilters() {
-      this.filters = {
-        aveLengthMin: null,
-        aveLengthMax: null,
-        lisanValueMin: null,
-        lisanValueMax: null,
-        hardnessMin: null,
-        hardnessMax: null,
-        yieldStrengthMin: null,
-        yieldStrengthMax: null,
-        strengthExtensionMin: null,
-        strengthExtensionMax: null,
+
+    // =========== 导出 Excel ===========
+    exportExcel() {
+      const tab = this.activeTab;
+      const data = this.currentData;
+      if (data.length === 0) { this.$message.warning('当前没有可导出的数据'); return; }
+
+      let sheetFilter, sheetHeader, fileName;
+      if (tab === 'performance') {
+        fileName = '性能预测历史记录';
+        sheetFilter = ['_type','aveLength','lisanValue','hardness','yieldStrength','strengthExtension','createTime'];
+        sheetHeader = ['模型类型','平均晶粒尺寸','离散特征值','硬度','屈服强度','抗拉强度','创建时间'];
+      } else if (tab === 'crack') {
+        fileName = '裂纹识别历史记录';
+        sheetFilter = ['ImageUrl','_crackCount','createTime'];
+        sheetHeader = ['图片路径','裂纹数','识别时间'];
+      } else {
+        fileName = '温度预测历史记录';
+        sheetFilter = ['fileName','temp','time'];
+        sheetHeader = ['文件名','预测温度(℃)','预测时间'];
+      }
+
+      if (this.isAdmin) {
+        sheetFilter.unshift('uid');
+        sheetHeader.unshift('用户UID');
+      }
+
+      const option = {
+        fileName,
+        datas: [{
+          sheetData: data,
+          sheetName: '历史记录',
+          sheetFilter,
+          sheetHeader,
+        }],
+        type: 'xlsx'
       };
-      this.filterData();
-    },
-    exportData() {
-      const option = {};
-      option.fileName = '历史记录';
-
-      // 在导出数据之前过滤掉 ID 和 UID 列
-      const filteredForExport = this.filteredTable.map(item => {
-        const { id, uid, ...rest } = item; // 使用对象解构来移除 id 和 uid 属性
-        return rest;
-      });
-
-      let sheetFilter = [
-        'aveLength',
-        'lisanValue',
-        'hardness',
-        'yieldStrength',
-        'strengthExtension',
-        'createTime',
-        'updateTime',
-      ];
-      let sheetHeader = [
-        '平均晶粒尺寸',
-        '离散特征值',
-        '硬度',
-        '屈服强度',
-        '抗拉强度',
-        '创建时间',
-        '更新时间',
-      ];
-
-      if (this.showOptionalColumns) {
-        sheetFilter = [
-          'aveLength',
-          'lisanValue',
-          'hardness',
-          'yieldStrength',
-          'strengthExtension',
-          'inputLayer',
-          'outputLayer',
-          'intermediateLayer',
-          'options',
-          'numberOfCycles',
-          'learningRate',
-          'errorTargetValue',
-          'createTime',
-          'updateTime',
-        ];
-        sheetHeader = [
-          '平均晶粒尺寸',
-          '离散特征值',
-          '硬度',
-          '屈服强度',
-          '抗拉强度',
-          '输入层',
-          '输出层',
-          '中间层',
-          '选项',
-          '循环次数',
-          '学习率',
-          '误差目标值',
-          '创建时间',
-          '更新时间',
-        ];
-      }
-
-      option.datas = [
-        {
-          sheetData: filteredForExport, // 使用过滤后的数据进行导出
-          sheetName: 'sheet',
-          sheetFilter: sheetFilter,
-          sheetHeader: sheetHeader,
-          columnWidths: [15, 15, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 20, 20],
-        },
-      ];
-      option.type = 'xlsx';
-
       const toExcel = new ExportJsonExcel(option);
       toExcel.saveExcel();
     },
-    toggleOptionalColumns() {
-      this.showOptionalColumns = !this.showOptionalColumns;
-    },
-  },
-  watch: {
-    pageSize(newVal, oldVal) {
-      console.log(`pageSize 改变了: ${oldVal} -> ${newVal}`);
-      this.filterData();
-    },
-    currentPage(newVal, oldVal) {
-      console.log(`currentPage 改变了: ${oldVal} -> ${newVal}`);
-    },
-    table(newVal, oldVal) {
-      console.log(`table 改变了: ${oldVal} -> ${newVal}`);
-    },
-  },
-  async mounted() {
-    await this.fetchHistoryData();
-  },
+
+    // =========== 分页 ===========
+    handleSizeChange(val)    { this.pageSize = val; this.currentPage = 1; },
+    handleCurrentChange(val) { this.currentPage = val; },
+  }
 };
 </script>
 
 <style lang="less" scoped>
-/*  主色调  */
-@primary-color: #409eff;
-/*  浅灰色背景  */
-@light-gray-bg: #f0f2f5;
-/*  文字颜色  */
-@text-color: #333;
-/*  辅助文字颜色  */
-@sub-text-color: #999;
-/*  边框颜色  */
-@border-color: #dcdfe6;
-/* 圆角大小 */
-@border-radius: 4px;
+.history-hub {
+  padding: 24px;
+  min-height: 100%;
+  background: var(--bg-base);
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  font-family: 'Inter', 'PingFang SC', sans-serif;
+}
 
-.container {
-  padding: 20px;
-  background-color: var(--bg-elevated);
+/* 顶部标题栏 */
+.hub-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 28px;
+  background: linear-gradient(135deg, rgba(0,212,255,0.08), rgba(124,58,237,0.08));
+  border: 1px solid rgba(0,212,255,0.2);
+  border-radius: var(--radius-lg);
+}
+
+.hub-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+
+  i { font-size: 24px; color: var(--accent-primary); }
+
+  span:first-of-type {
+    font-size: 22px;
+    font-weight: 700;
+    background: var(--accent-gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+}
+
+.hub-subtitle {
+  font-size: 11px !important;
+  letter-spacing: 2px;
+  color: var(--text-muted) !important;
+  -webkit-text-fill-color: var(--text-muted) !important;
+  background: none !important;
+}
+
+.hub-actions {
+  display: flex;
+  align-items: center;
+}
+
+/* Tab 栏 */
+.tab-bar {
+  display: flex;
+  gap: 12px;
+}
+
+.tab-item {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 14px 24px;
+  background: rgba(22,27,34,0.6);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
-  box-shadow: var(--shadow-card);
-  text-align: center;
-  font-family: 'Inter', 'PingFang SC', 'Microsoft YaHei', Arial, sans-serif;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  color: var(--text-secondary);
+  font-weight: 500;
+  font-size: 14px;
+
+  i { font-size: 16px; }
+
+  &:hover {
+    border-color: rgba(0,212,255,0.4);
+    color: var(--accent-primary);
+    background: rgba(0,212,255,0.06);
+  }
+
+  &.active {
+    border-color: var(--accent-primary);
+    color: var(--accent-primary);
+    background: rgba(0,212,255,0.1);
+    box-shadow: 0 0 16px rgba(0,212,255,0.15);
+  }
 }
 
-/* 标题样式 */
-.title {
-  font-size: 28px;
+.tab-count {
+  background: rgba(0,212,255,0.2);
+  color: var(--accent-primary);
+  border-radius: 20px;
+  padding: 0 8px;
+  font-size: 12px;
   font-weight: 700;
-  background: var(--accent-gradient);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  margin-bottom: 20px;
-  text-align: center;
-  display: inline-block;
-  padding-bottom: 10px;
-}
-
-/* 标题下方的横线 */
-.title::after {
-  content: '';
-  position: absolute;
-  left: 50%;
-  bottom: -5px; /* 调整横线与文字的距离 */
-  transform: translateX(-50%);
-  width: 160%; /*  横线比文字更长  */
-  height: 2px; /*  横线高度  */
-  background-color: @border-color; /*  横线颜色  */
-}
-
-/*  筛选条件  */
-.filter-container {
-  padding: 16px;
-  border-radius: 8px;
-  margin-bottom: 20px;
+  min-width: 24px;
   text-align: center;
 }
 
-.filter-form {
-  width: 100%;
+/* 内容区 */
+.hub-content {
+  flex: 1;
+  background: rgba(22,27,34,0.6);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  backdrop-filter: blur(12px);
 }
 
-/*  filter-items 样式 */
-.filter-items {
-  display: flex; /* 使用 Flexbox 布局 */
-  flex-wrap: wrap; /* 允许换行 */
-  justify-content: flex-start; /* 左对齐 */
+.admin-badge-bar {
+  margin-bottom: 14px;
 }
 
-.el-form-item {
-  margin-bottom: 12px;
-  text-align: left;
-  width: 48%; /* 调整宽度，每行显示两个 */
-  display: flex; /* 使用 Flexbox 布局 */
-  align-items: center; /* 垂直居中 */
-}
-
-/* 自定义 Label 样式 */
-.custom-label {
-  color: @sub-text-color;
-  font-weight: normal;
-  margin-right: 6px; /* 与输入框间隔 */
-  text-align: left;
-  width: auto; /* 宽度自适应 */
-  order: -1; /* 将label放在前面 */
-  white-space: nowrap; /* 防止文字换行 */
-  display: inline-block; /* 设置为内联块元素 */
-  font-size: 16px; /* 增大筛选条件文字字号 */
-}
-
-/* 范围输入框样式 */
-.range-input {
-  display: flex; /* 使用Flex布局 */
-  /* align-items: center; */ /* 移除垂直居中 */
-  justify-content: space-around; /* 均匀分布子元素 */
-  width: 100%; /* 占据全部宽度 */
-}
-
-.range-input .el-input {
-  width: 45%; /* 调整输入框宽度，留出间隔 */
-  border-radius: @border-radius;
-}
-
-/* Input 之间的分隔符 */
-.range-input .separator {
-  margin: 0; /* 移除 Separator 的 Margin */
-  color: @sub-text-color;
-}
-
-/* 自定义输入框样式 */
-.custom-input {
-  border: none;
-  background-color: transparent;
-  color: @text-color;
-  padding: 6px 12px;
-  border-radius: @border-radius;
-  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.06);
-}
-
-.custom-input:focus {
-  outline: none;
-  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.12);
-}
-
-/* 筛选按钮样式 */
-.filter-buttons {
-  text-align: center;
-  margin-top: 20px;
-}
-
-.filter-button {
-  border-radius: @border-radius;
-}
-
-/* 表格 */
-.table-wrapper {
-  height: 550px;
-  overflow-y: auto;
-  border: 1px solid @border-color;
-  border-radius: 4px;
-}
-
-.custom-table {
-  width: 100%;
-  border: none;
-
-  /* 表头样式 */
-  th {
-    background-color: #ebf2f9;
-    color: @text-color;
-    font-weight: 500;
-    text-align: center;
-    padding: 12px 0;
-    border-bottom: 1px solid @border-color;
-  }
-
-  /* 单元格样式 */
-  td {
-    text-align: center;
-    font-size: 14px;
-    color: @text-color;
-    padding: 12px 0;
-  }
-
-  /* 斑马纹 */
-  .el-table__body tr:nth-child(even) {
-    background-color: #f9f9f9;
-  }
-}
-
-/* 调整表格列宽 */
-.el-table-column[prop="aveLength"] {
-  min-width: 10px; /* 调整平均晶粒尺寸列宽 */
-}
-
-.el-table-column[prop="lisanValue"] {
-  min-width: 10px; /* 调整离散特征值列宽 */
-}
-
-/* 按钮区域 */
-.button-container {
-  margin-top: 20px;
-  display: flex;
-  justify-content: center;
-  gap: 10px;
-}
-
-/* 分页 */
-.pagination {
-  margin-top: 20px;
-  display: flex;
-  justify-content: center;
-}
-
-/* 表头斑马纹覆盖 */
-/deep/ .el-table tr,
-/deep/ .el-table td.el-table__cell {
-  background-color: var(--bg-elevated) !important;
-  color: var(--text-primary) !important;
-  border-bottom: 1px solid rgba(255,255,255,0.04) !important;
-}
-
-/deep/ .el-table--striped .el-table__body tr.el-table__row--striped td.el-table__cell {
-  background-color: rgba(0,0,0,0.1) !important;
-}
-
-/deep/ .el-table__body tr:hover > td.el-table__cell {
-  background-color: rgba(0,212,255,0.07) !important;
-}
-
-/* 空数据状态 */
-.image-container {
-  position: relative;
-  height: 400px;
-}
-
-.empty-state {
-  position: absolute;
-  top: 0; left: 0;
-  width: 100%; height: 100%;
-  background-color: transparent !important;
+.empty-block {
   display: flex;
   justify-content: center;
   align-items: center;
-  color: var(--text-muted);
+  min-height: 280px;
 }
+
+/* 表格 */
+.hub-table {
+  width: 100%;
+  background: transparent !important;
+
+  /deep/ .el-table__body tr:hover > td.el-table__cell {
+    background: rgba(0,212,255,0.06) !important;
+  }
+  /deep/ .el-table tr,
+  /deep/ .el-table td.el-table__cell {
+    background: transparent !important;
+    color: var(--text-primary) !important;
+    border-bottom: 1px solid rgba(255,255,255,0.04) !important;
+  }
+  /deep/ .el-table::before { display: none; }
+}
+
+/* 分页 */
+.hub-pagination {
+  margin-top: 20px;
+  display: flex;
+  justify-content: center;
+}
+
+/* 底部操作浮动栏 */
+.hub-footer {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 24px;
+  background: rgba(22,27,34,0.9);
+  border: 1px solid rgba(246,75,75,0.3);
+  border-radius: var(--radius-md);
+  backdrop-filter: blur(12px);
+
+  .selected-tip {
+    flex: 1;
+    color: var(--text-secondary);
+    font-size: 13px;
+    b { color: #F56C6C; }
+  }
+}
+
+/* 密码确认弹窗 */
+.pwd-dialog-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 10px 0;
+}
+
+/deep/ .el-dialog {
+  background: rgba(22,27,34,0.97) !important;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+}
+/deep/ .el-dialog__title { color: var(--text-primary); }
+/deep/ .el-dialog__header { border-bottom: 1px solid var(--border-subtle); }
 </style>
-
-
-
-

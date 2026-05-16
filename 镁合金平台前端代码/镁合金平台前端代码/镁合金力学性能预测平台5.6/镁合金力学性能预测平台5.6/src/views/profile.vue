@@ -156,43 +156,11 @@ export default {
     },
   },
   created() {
-    this.setupInterceptors();
     this.initializeProfile();
   },
   methods: {
     ...mapActions("user", ["updateAvatar"]),
 
-    setupInterceptors() {
-      // 请求拦截器
-      axios.interceptors.request.use(
-          (config) => {
-            const token = this.getAuthorization();
-            if (token) {
-              config.headers["Authorization"] = token;
-            }
-            return config;
-          },
-          (error) => {
-            return Promise.reject(error);
-          }
-      );
-
-      // 响应拦截器
-      axios.interceptors.response.use(
-          (response) => {
-            return response;
-          },
-          (error) => {
-            if (error.response && error.response.status === 401) {
-              localStorage.removeItem("Authorization");
-              localStorage.removeItem("uid");
-              this.$message.error("登录已过期，请重新登录");
-              this.$router.push("/login");
-            }
-            return Promise.reject(error);
-          }
-      );
-    },
 
     initializeProfile() {
       this.loading = true;
@@ -211,8 +179,8 @@ export default {
 
     checkLoginStatus() {
       return new Promise((resolve, reject) => {
-        const uid = localStorage.getItem("uid");
-        if (!uid) {
+        const token = localStorage.getItem("Authorization");
+        if (!token) {
           this.$message.error("未登录，请先登录！");
           this.$router.push("/login");
           reject(new Error("未登录"));
@@ -250,6 +218,9 @@ export default {
           this.updateAvatar(fullAvatarUrl);
 
           this.profile.username = response.data.username;
+          // 补存 uid 和 role，确保管理员功能和登录态检测正常
+          if (response.data.uid) localStorage.setItem('uid', response.data.uid);
+          if (response.data.role !== undefined) localStorage.setItem('role', response.data.role);
           this.$message.success("用户信息获取成功");
         } else {
           throw new Error("获取用户信息失败");
@@ -257,15 +228,8 @@ export default {
       } catch (error) {
         console.error("获取用户信息失败:", error);
         this.profile.UserUrl = this.defaultAvatar;
-
-        if (error.response?.status === 401) {
-          this.$message.error("登录已过期，请重新登录");
-          this.$router.push("/login");
-        } else {
-          this.$message.error(
-              "获取用户信息失败，请检查网络或后端服务是否正常运行"
-          );
-        }
+        // 不强制跳转登录，仅提示用户，避免 token 短暂失效导致意外退出
+        this.$message.warning("获取用户信息失败，部分数据可能无法显示");
       }
     },
 
