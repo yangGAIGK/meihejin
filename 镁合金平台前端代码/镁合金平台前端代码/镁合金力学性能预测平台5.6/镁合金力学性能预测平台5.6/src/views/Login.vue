@@ -259,7 +259,16 @@ export default {
         }).then(res => {
           const { code, msg, data } = res.data;
           if (code === 1) {
-            window.localStorage.setItem('Authorization', data);
+            const token = data;
+            window.localStorage.setItem('Authorization', token);
+            // 登录后获取用户信息，补存 uid 和 role，确保管理员功能正常
+            axios.get('http://localhost:8080/user/info', {
+              headers: { Authorization: token }
+            }).then(infoRes => {
+              const userInfo = infoRes.data;
+              if (userInfo.uid) localStorage.setItem('uid', userInfo.uid);
+              if (userInfo.role !== undefined) localStorage.setItem('role', String(userInfo.role));
+            }).catch(() => {});
             const loading = this.$loading({ lock: true, text: '正在登录...', background: 'rgba(0,0,0,0.7)' });
             setTimeout(() => { this.$router.push('/data1'); loading.close(); }, 500);
           } else if (code === -1) {
@@ -273,15 +282,44 @@ export default {
       });
     },
 
-    // ---------- 管理员登录（本地硬编码） ----------
+    // ---------- 管理员登录（走后端接口，校验 role=1） ----------
     doAdminLogin() {
-      if (this.adminUser.username === 'admin' && this.adminUser.password === '123456') {
-        this.$message.success('管理员登录成功');
-        localStorage.setItem('uid', 'admin_user_001');
-        setTimeout(() => this.$router.push({ name: 'main' }), 800);
-      } else {
-        this.$message.error('管理员账号或密码错误');
-      }
+      this.$refs.adminForm.validate(valid => {
+        if (!valid) return;
+        this.loginLoading = true;
+        axios.post('http://localhost:8080/user/login', {
+          username: this.adminUser.username,
+          password: this.adminUser.password,
+        }).then(res => {
+          const { code, msg, data } = res.data;
+          if (code === 1) {
+            // data 是 JWT token，先存储
+            const token = data;
+            // 解析 token 里的 role
+            return axios.get('http://localhost:8080/user/info', {
+              headers: { Authorization: token }
+            }).then(infoRes => {
+              const userInfo = infoRes.data;
+              if (userInfo.role !== 1 && userInfo.role !== '1') {
+                this.$message.error('该账号不是管理员，无权登录此入口');
+                return;
+              }
+              // 是管理员，保存 token 和 role
+              localStorage.setItem('Authorization', token);
+              if (userInfo.uid) localStorage.setItem('uid', userInfo.uid);
+              localStorage.setItem('role', String(userInfo.role));
+              const loading = this.$loading({ lock: true, text: '管理员登录中...', background: 'rgba(0,0,0,0.7)' });
+              setTimeout(() => { this.$router.push('/main'); loading.close(); }, 500);
+            });
+          } else if (code === -1) {
+            this.$message.error(msg);
+          } else {
+            this.$message.warning(msg || '账号或密码错误');
+          }
+        }).catch(err => {
+          this.$message.error('登录失败：' + err.message);
+        }).finally(() => { this.loginLoading = false; });
+      });
     },
 
     // ---------- 注册 ----------

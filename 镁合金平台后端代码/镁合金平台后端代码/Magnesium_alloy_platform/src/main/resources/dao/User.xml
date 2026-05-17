@@ -26,7 +26,7 @@
         WHERE username = #{username} AND password = #{encryptedOldPwd}
     </update>
     <select id="getUserInfo" resultType="java.util.Map">
-        SELECT username, email, UserUrl
+        SELECT username, email, phone, uid, role, UserUrl
         FROM user
         WHERE uid = #{uid}
     </select>

@@ -13,7 +13,7 @@
       </el-col>
     </el-row>
 
-    <el-row>
+    <el-row type="flex" justify="center">
       <el-col :span="20">
         <el-form
             ref="profileForm"
@@ -233,17 +233,19 @@ export default {
     ...mapActions("user", ["updateAvatar"]),
 
 
-    initializeProfile() {
+    async initializeProfile() {
       this.loading = true;
-      const tasks = [this.checkLoginStatus(), this.fetchUserInfo()];
-      if (this.isAdmin) {
-        tasks.push(this.fetchUserList());
+      try {
+        await this.checkLoginStatus();
+        await this.fetchUserInfo();
+        if (this.isAdmin) {
+          await this.fetchUserList();
+        }
+      } catch (error) {
+        console.error("初始化失败:", error);
+      } finally {
+        this.loading = false;
       }
-      Promise.all(tasks)
-          .catch((error) => console.error("初始化失败:", error))
-          .finally(() => {
-            this.loading = false;
-          });
     },
 
     getAuthorization() {
@@ -586,7 +588,7 @@ export default {
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-card);
   max-width: 700px;
-  margin-top: 24px;
+  margin: 24px auto 0 auto;
   position: relative;
 
   /* 顶部高光线 */
@@ -674,7 +676,7 @@ export default {
 
 /* 管理员板块样式 */
 .admin-management-section {
-  margin-top: 40px;
+  margin: 40px auto 0 auto;
   background-color: var(--bg-elevated);
   border: 1px solid var(--border-subtle);
   padding: 32px;
